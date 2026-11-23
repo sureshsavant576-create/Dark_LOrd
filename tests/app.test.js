@@ -22,6 +22,7 @@ test('LabLink REST workflows enforce the main allocation rules',async t=>{
  const notAdmin=await get(`/api/analytics?userId=${student.id}`);assert.equal(notAdmin.status,403);
  const hod=users.find(x=>x.role==='hod'),adminAnalytics=await get(`/api/analytics?userId=${hod.id}`);assert.equal(adminAnalytics.status,200);assert.ok(adminAnalytics.data.equipment[0].scheduled_hours>=0);
  const notifs=await get(`/api/notifications?userId=${student.id}`);assert.equal(notifs.status,200);assert.ok(notifs.data.items.some(x=>x.event_type==='booking_submitted'));
+ const assistant=await post('/api/assistant/chat',{userId:student.id,question:'Which project equipment do I need?'});assert.equal(assistant.status,200);assert.match(assistant.data.mode,/AI unavailable/);const insights=await post('/api/analytics/ai-insights',{userId:student.id});assert.equal(insights.status,403);const authorizedInsights=await post('/api/analytics/ai-insights',{userId:faculty.id});assert.equal(authorizedInsights.status,200);assert.equal(authorizedInsights.data.data_source,'database aggregates');
  const deniedMaintenance=await post('/api/equipment/maintenance',{actorId:student.id,equipmentId:1,note:'service required'});assert.equal(deniedMaintenance.status,403);
  const tech=users.find(x=>x.role==='technician'),maintenance=await post('/api/equipment/maintenance',{actorId:tech.id,equipmentId:1,note:'routine service required'});assert.equal(maintenance.status,200);const unavailable=await get('/api/equipment');assert.equal(unavailable.data.find(x=>x.id===1).operational_status,'maintenance');
 });

@@ -14,3 +14,32 @@ body{font-size:14px;line-height:1.5}
 button:disabled{cursor:not-allowed;opacity:.55}
 @media(max-width:700px){.table-wrap{margin-inline:-4px}.data-table{min-width:640px}.dialog{max-height:90dvh;overflow:auto}.topbar-right{min-width:0}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
+/* GenAI & Intelligent Allocation Engine UI Styles */
+.ai-hero-card{background:linear-gradient(135deg,#ffffff 0%,#f6faf7 100%);border:1px solid #cce2d4;border-radius:12px;padding:22px;margin:18px 0 22px;box-shadow:0 8px 30px rgba(33,108,77,.06);position:relative;overflow:hidden}
+.ai-hero-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#18593e,#45a777,#74c99c)}
+.ai-hero-badge{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:700;color:#18593e;background:#e4f2e9;padding:4px 10px;border-radius:20px;margin-bottom:10px;letter-spacing:.5px}
+.ai-sparkle{color:#2c8b61;font-size:13px}
+.ai-hero-card h2{font:700 20px Manrope,sans-serif;color:#172a1f;margin:0 0 6px;letter-spacing:-.4px}
+.ai-hero-card p{font-size:12px;color:#58635b;margin:0 0 15px;line-height:1.55;max-width:760px}
+.ai-input-wrap{display:flex;gap:10px;background:#fff;border:1.5px solid #bddbc8;border-radius:8px;padding:6px 8px 6px 14px;box-shadow:0 2px 8px rgba(0,0,0,.03);align-items:center}
+.ai-input-wrap:focus-within{border-color:#216c4d;box-shadow:0 0 0 3px rgba(33,108,77,.15)}
+.ai-input-wrap input{border:0;outline:0;flex:1;font-size:13px;color:#1c211e;background:transparent}
+.ai-match-btn{background:linear-gradient(135deg,#18593e,#216c4d);color:#fff;border:0;padding:10px 18px;font-size:12px;font-weight:700;border-radius:6px;white-space:nowrap}
+.ai-prompt-chips{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:14px}
+.chips-label{font-size:11px;font-weight:600;color:#717c73}
+.prompt-chip{background:#fff;border:1px solid #d4ded7;border-radius:20px;padding:5px 11px;font-size:11px;font-weight:600;color:#33443a;transition:all .15s ease}
+.prompt-chip:hover{background:#eaf3ed;border-color:#45a777;color:#18593e;transform:translateY(-1px)}
+.fairness-banner{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;background:#ffffff;border:1px solid #e1e7e3;border-left:4px solid #216c4d;border-radius:8px;padding:12px 18px;margin:16px 0 20px;font-size:12px}
+.fairness-banner strong{color:#1c2e22}
+.fairness-banner span{color:#556258}
+.ai-matrix-card{background:#ffffff;border:1px solid #cbe0d3;border-radius:10px;padding:18px;margin:16px 0 24px;box-shadow:0 4px 16px rgba(33,108,77,.05)}
+.ai-matrix-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.ai-mode-pill{font-size:11px;font-weight:700;color:#175739;background:#def0e4;padding:4px 10px;border-radius:20px}
+.ai-match-badge{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:700;color:#145939;background:#dff2e6;padding:3px 8px;border-radius:12px}
+.score-radial{display:flex;align-items:center;gap:14px;background:#f4faf6;border:1px solid #d5ebdc;border-radius:8px;padding:12px 16px;margin:14px 0}
+.score-number{font:800 24px Manrope;color:#175739}
+.ai-recommend-box{background:#eef7f1;border:1.5px solid #a3d7b7;border-radius:8px;padding:14px 16px;margin-bottom:16px}
+.ai-recommend-box strong{color:#125433;font-size:13px}
+.ai-recommend-box p{font-size:12px;color:#3b5a48;margin:4px 0 0;line-height:1.5}
+.dept-pill{font-size:10px;font-weight:700;color:#384d40;background:#eef2ef;padding:3px 7px;border-radius:4px;display:inline-block;margin-bottom:4px}
+
