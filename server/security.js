@@ -6,6 +6,10 @@ const configuredSecret = process.env.LABLINK_SESSION_SECRET;
 if (configuredSecret && Buffer.byteLength(configuredSecret) < 32) throw new Error('LABLINK_SESSION_SECRET must contain at least 32 bytes.');
 const sessionSecret = configuredSecret || crypto.randomBytes(32).toString('base64url');
 const windows = new Map();
+const MAX_RATE_LIMIT_BUCKETS = 10_000;
+const RATE_LIMIT_WINDOW_MS = 60_000;
+const RATE_LIMIT_CLEANUP_INTERVAL_MS = 10_000;
+let nextRateLimitCleanup = 0;
 
 function signature(value) {
   return crypto.createHmac('sha256', sessionSecret).update(value).digest();
@@ -51,17 +55,21 @@ function clientKey(req) {
 
 function checkRequestLimit(req, pathname) {
   const now = Date.now();
+  if (now >= nextRateLimitCleanup) {
+    for (const [key, entry] of windows) {
+      if (entry.resetAt <= now) windows.delete(key);
+    }
+    nextRateLimitCleanup = now + RATE_LIMIT_CLEANUP_INTERVAL_MS;
+  }
   const expensive = /^\/api\/(assistant|planner\/analyze|analytics\/ai-insights)/.test(pathname);
   const limit = pathname === '/api/demo/session' ? 120 : expensive ? 12 : 180;
-  const windowMs = 60_000;
+  const windowMs = RATE_LIMIT_WINDOW_MS;
   const key = `${clientKey(req)}:${expensive ? 'ai' : pathname === '/api/demo/session' ? 'session' : 'api'}`;
   let bucket = windows.get(key);
+  if (!bucket && windows.size >= MAX_RATE_LIMIT_BUCKETS) return Math.ceil(windowMs / 1000);
   if (!bucket || bucket.resetAt <= now) bucket = { count: 0, resetAt: now + windowMs };
   bucket.count += 1;
   windows.set(key, bucket);
-  if (windows.size > 10_000) {
-    for (const [candidate, entry] of windows) if (entry.resetAt <= now) windows.delete(candidate);
-  }
   return bucket.count <= limit ? null : Math.max(1, Math.ceil((bucket.resetAt - now) / 1000));
 }
 
@@ -102,6 +110,7 @@ function securityHeaders(res, secure = false) {
 
 module.exports = {
   SESSION_TTL_SECONDS,
+  MAX_RATE_LIMIT_BUCKETS,
   issueDemoSession,
   clearDemoSession,
   readDemoSession,

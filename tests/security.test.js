@@ -4,6 +4,7 @@ const {
   issueDemoSession,
   readDemoSession,
   checkRequestLimit,
+  MAX_RATE_LIMIT_BUCKETS,
   assertQueryIdentity,
   assertBodyIdentity,
   securityHeaders
@@ -38,6 +39,14 @@ test('API rate limits are independent per client and expensive route class',()=>
   assert.ok(checkRequestLimit(request,'/api/bookings')>0);
   for(let i=0;i<12;i++)assert.equal(checkRequestLimit(request,'/api/assistant/chat'),null);
   assert.ok(checkRequestLimit(request,'/api/assistant/chat')>0);
+});
+
+test('API rate limiter bounds the number of client buckets',()=>{
+  let last;
+  for(let i=0;i<=MAX_RATE_LIMIT_BUCKETS;i++){
+    last=checkRequestLimit({headers:{},socket:{remoteAddress:`bucket-limit-${i}`}},'/api/catalog');
+  }
+  assert.ok(last>0,'new client buckets are throttled after the in-memory cap');
 });
 
 test('HTTP security headers include browser isolation defaults',()=>{
