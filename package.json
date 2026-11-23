@@ -1,0 +1,8 @@
+{
+  "name": "lablink-campus-resources",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Project-aware, fairness-driven campus laboratory resource platform",
+  "scripts": { "start": "node server/index.js" },
+  "engines": { "node": ">=22.5" }
+}
