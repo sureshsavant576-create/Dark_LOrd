@@ -1,0 +1,11 @@
+project_id = "lablink-campus-resources"
+
+[api]
+enabled = true
+schemas = ["public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[db.seed]
+enabled = false
+sql_paths = ["./seed.sql"]

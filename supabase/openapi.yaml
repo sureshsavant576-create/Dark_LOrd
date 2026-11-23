@@ -1,0 +1,80 @@
+openapi: 3.1.0
+info:
+  title: LabLink Public Catalog API
+  version: 1.0.0
+  description: Read-only campus equipment and department catalog backed by Supabase PostgREST. Booking and student records are intentionally private.
+servers:
+  - url: https://{projectRef}.supabase.co/rest/v1
+    variables:
+      projectRef:
+        default: your-project-ref
+security:
+  - supabasePublishableKey: []
+    bearerKey: []
+paths:
+  /equipment_catalog:
+    get:
+      operationId: listEquipment
+      summary: List public equipment catalog entries
+      parameters:
+        - name: select
+          in: query
+          schema: { type: string, default: "id,name,category,location,description,specs,total_units,training_required,status,tags,operational_status,restrictions,max_hours,equivalent_group,technical_profile,department,department_code" }
+        - name: department_code
+          in: query
+          description: Filter using PostgREST syntax, for example eq.ECE.
+          schema: { type: string }
+        - name: category
+          in: query
+          description: Filter using PostgREST syntax, for example eq.Fabrication.
+          schema: { type: string }
+        - name: order
+          in: query
+          schema: { type: string, default: "name.asc" }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 1000, default: 100 }
+      responses:
+        "200":
+          description: Equipment catalog rows
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  additionalProperties: true
+        "401": { description: Missing or invalid Supabase publishable key }
+        "403": { description: Catalog access is not granted }
+  /departments:
+    get:
+      operationId: listDepartments
+      summary: List public campus departments
+      parameters:
+        - name: select
+          in: query
+          schema: { type: string, default: "id,name,code" }
+        - name: order
+          in: query
+          schema: { type: string, default: "name.asc" }
+      responses:
+        "200":
+          description: Campus departments
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  additionalProperties: true
+components:
+  securitySchemes:
+    supabasePublishableKey:
+      type: apiKey
+      in: header
+      name: apikey
+      description: Supabase publishable (anon) key. Never use the service-role key in a browser or public API client.
+    bearerKey:
+      type: http
+      scheme: bearer
+      description: Use the same publishable key for the read-only public catalog. Authenticated private endpoints will require a real signed-in user's access token.
