@@ -1,0 +1,27 @@
+const {test}=require('node:test');
+const assert=require('node:assert/strict');
+const {spawn}=require('node:child_process');
+const fs=require('node:fs');
+const os=require('node:os');
+const path=require('node:path');
+const root=path.join(__dirname,'..');
+test('LabLink REST workflows enforce the main allocation rules',async t=>{
+ const dir=fs.mkdtempSync(path.join(os.tmpdir(),'lablink-test-'));const port=35000+Math.floor(Math.random()*20000);const child=spawn(process.execPath,['server/index.js'],{cwd:root,env:{...process.env,PORT:String(port),LABLINK_DB_PATH:path.join(dir,'test.sqlite'),OPENAI_API_KEY:''},stdio:'ignore'});const base=`http://127.0.0.1:${port}`;
+ t.after(async()=>{child.kill();await new Promise(resolve=>child.once('exit',resolve));fs.rmSync(dir,{recursive:true,force:true});});
+ let health;for(let i=0;i<80;i++){try{health=await fetch(base+'/api/health');if(health.ok)break;}catch{}await new Promise(r=>setTimeout(r,100));}assert.equal(health?.status,200);
+ const get=async(p)=>{const r=await fetch(base+p);return {status:r.status,data:await r.json()};};const post=async(p,b)=>{const r=await fetch(base+p,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(b)});return {status:r.status,data:await r.json()};};
+ const catalog=await get('/api/equipment');assert.equal(catalog.status,200);assert.ok(catalog.data.length>=8);
+ const search=await post('/api/assistant/search',{query:'IoT greenhouse temperature sensor wireless'});assert.equal(search.status,200);assert.ok(search.data.analysis.keywords.length);assert.ok(search.data.results.length);
+ const users=(await get('/api/bootstrap')).data.users,student=users.find(x=>x.role==='student'),faculty=users.find(x=>x.role==='faculty');const future=new Date(Date.now()+86400000);future.setMinutes(0,0,0);const startAt=`${future.getFullYear()}-${String(future.getMonth()+1).padStart(2,'0')}-${String(future.getDate()).padStart(2,'0')}T10:00`;const endAt=startAt.slice(0,11)+'11:00';const payload={userId:student.id,projectId:1,equipmentId:1,startAt,endAt,purpose:'Build and validate greenhouse sensor prototype'};
+ const concurrent=await Promise.all([post('/api/bookings',payload),post('/api/bookings',payload)]);assert.equal(concurrent.filter(x=>x.status===201).length,1,'duplicate simultaneous request must not be created');
+ const id=concurrent.find(x=>x.status===201).data.id;const denied=await post(`/api/bookings/${id}/approve`,{reviewerId:student.id,note:'approve'});assert.equal(denied.status,403);const allocation=await post('/api/allocation/recommend',{reviewerId:faculty.id,equipmentId:1,startAt,endAt});assert.equal(allocation.status,200);assert.equal(allocation.data.recommendations[0].id,id);assert.ok(allocation.data.recommendations[0].reasons.length);assert.equal((await get('/api/allocation/recommend')).status,404);
+ const reject=await post(`/api/bookings/${id}/reject`,{reviewerId:faculty.id,note:'Please clarify the project need'});assert.equal(reject.status,200);const history=await get(`/api/bookings?userId=${student.id}&role=student`);assert.ok(history.data.some(x=>x.id===id&&x.status==='rejected'));
+ const training=await post('/api/bookings',{...payload,equipmentId:4,startAt:startAt.slice(0,11)+'12:00',endAt:startAt.slice(0,11)+'13:00'});assert.equal(training.status,409);
+ const rejectedNoReason=await post(`/api/bookings/${id}/reject`,{reviewerId:faculty.id,note:''});assert.equal(rejectedNoReason.status,409);
+ const slot=await get(`/api/equipment/slots?equipmentId=1&date=${startAt.slice(0,10)}`);assert.equal(slot.status,200);assert.equal(slot.data.slots.length,8);
+ const notAdmin=await get(`/api/analytics?userId=${student.id}`);assert.equal(notAdmin.status,403);
+ const hod=users.find(x=>x.role==='hod'),adminAnalytics=await get(`/api/analytics?userId=${hod.id}`);assert.equal(adminAnalytics.status,200);assert.ok(adminAnalytics.data.equipment[0].scheduled_hours>=0);
+ const notifs=await get(`/api/notifications?userId=${student.id}`);assert.equal(notifs.status,200);assert.ok(notifs.data.items.some(x=>x.event_type==='booking_submitted'));
+ const deniedMaintenance=await post('/api/equipment/maintenance',{actorId:student.id,equipmentId:1,note:'service required'});assert.equal(deniedMaintenance.status,403);
+ const tech=users.find(x=>x.role==='technician'),maintenance=await post('/api/equipment/maintenance',{actorId:tech.id,equipmentId:1,note:'routine service required'});assert.equal(maintenance.status,200);const unavailable=await get('/api/equipment');assert.equal(unavailable.data.find(x=>x.id===1).operational_status,'maintenance');
+});

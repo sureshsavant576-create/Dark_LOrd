@@ -4,7 +4,7 @@ const fs = require('node:fs');
 
 const dataDir = path.join(__dirname, '..', 'data');
 fs.mkdirSync(dataDir, { recursive: true });
-const db = new DatabaseSync(path.join(dataDir, 'lablink.sqlite'));
+const db = new DatabaseSync(process.env.LABLINK_DB_PATH || path.join(dataDir, 'lablink.sqlite'));
 db.exec('PRAGMA foreign_keys = ON; PRAGMA journal_mode = WAL;');
 db.exec(`
 CREATE TABLE IF NOT EXISTS departments (id INTEGER PRIMARY KEY, name TEXT UNIQUE NOT NULL, code TEXT NOT NULL);
@@ -18,6 +18,7 @@ CREATE TABLE IF NOT EXISTS usage_events (id INTEGER PRIMARY KEY, equipment_id IN
 CREATE TABLE IF NOT EXISTS maintenance_logs (id INTEGER PRIMARY KEY, equipment_id INTEGER NOT NULL REFERENCES equipment(id), actor_id INTEGER REFERENCES users(id), note TEXT NOT NULL, downtime_start TEXT NOT NULL, downtime_end TEXT, source TEXT NOT NULL DEFAULT 'verified', created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP);
 CREATE TABLE IF NOT EXISTS notifications (id INTEGER PRIMARY KEY, user_id INTEGER NOT NULL REFERENCES users(id), event_type TEXT NOT NULL, title TEXT NOT NULL, message TEXT NOT NULL, entity_type TEXT NOT NULL DEFAULT 'system', entity_id INTEGER, read_at TEXT, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, UNIQUE(user_id,event_type,entity_type,entity_id,created_at));
 CREATE INDEX IF NOT EXISTS bookings_equipment_slot ON bookings(equipment_id,start_at,end_at,status);
+CREATE UNIQUE INDEX IF NOT EXISTS bookings_user_exact_slot ON bookings(user_id,equipment_id,start_at,end_at) WHERE status IN ('pending','approved');
 CREATE INDEX IF NOT EXISTS bookings_user_date ON bookings(user_id,created_at);
 `);
 for(const [column,definition] of [['operational_status',"TEXT NOT NULL DEFAULT 'operational'"],['restrictions',"TEXT NOT NULL DEFAULT ''"],['max_hours','INTEGER NOT NULL DEFAULT 8'],['equivalent_group',"TEXT NOT NULL DEFAULT ''"]]){
