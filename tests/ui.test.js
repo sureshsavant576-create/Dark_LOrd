@@ -11,6 +11,6 @@ test('review history export button is wired to CSV export',()=>{
 });
 
 test('project planner has one timeline renderer',()=>{
-  const definitions=app.match(/^function drawExecutionPlan\\(plan\\)\\{/gm)||[];
+  const definitions=app.match(/^function drawExecutionPlan\(plan\)\{/gm)||[];
   assert.equal(definitions.length,1);
 });
