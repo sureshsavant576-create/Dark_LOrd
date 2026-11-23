@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#f4f5f3" />
   <meta name="description" content="Turn student project requirements into technically matched, fairly allocated access to shared college laboratory resources." />
   <title>LabLink · GenAI Campus Lab Resource Exchange</title>
-  <link rel="stylesheet" href="/styles.css" />
+  <link rel="stylesheet" href="/styles.css?v=lablink-ui-3" />
 </head>
 <body>
   <a class="skip-link" href="#content">Skip to dashboard content</a>
@@ -16,11 +16,19 @@
       <div class="campus-label">CAMPUS WORKSPACE</div>
       <nav class="nav-list" aria-label="Main navigation">
         <button class="nav-item active" data-view="discover"><span class="nav-icon">⌕</span><span>Discover</span><kbd>/</kbd></button>
-        <button class="nav-item" data-view="bookings"><span class="nav-icon">▤</span><span>My requests</span><span class="nav-count" id="request-count">0</span></button>
+        <button class="nav-item student-nav" data-view="planner"><span class="nav-icon">⤷</span><span>Project planner</span></button>
+        <button class="nav-item student-nav" data-view="projects"><span class="nav-icon">▣</span><span>My projects</span></button>
+        <button class="nav-item student-nav" data-view="waitlist"><span class="nav-icon">↻</span><span>Equipment waitlist</span><span class="nav-count" id="waitlist-count">0</span></button>
+        <button class="nav-item tracking-nav hidden" data-view="tracking"><span class="nav-icon">▦</span><span>Equipment tracking</span></button>
+        <button class="nav-item" data-view="bookings"><span class="nav-icon">▤</span><span id="requests-nav-label">My requests</span><span class="nav-count" id="request-count">0</span></button>
         <button class="nav-item faculty-nav hidden" data-view="review"><span class="nav-icon">✓</span><span>Review requests</span><span class="nav-count" id="pending-count">0</span></button>
         <button class="nav-item admin-nav hidden" data-view="insights"><span class="nav-icon">▥</span><span>Resource insights</span></button>
       </nav>
       <div class="sidebar-spacer"></div>
+      <div class="sidebar-profile" aria-label="Current member">
+        <span class="sidebar-profile-avatar" id="sidebar-profile-avatar">AS</span>
+        <span class="sidebar-profile-details"><strong id="sidebar-profile-name">Campus member</strong><small id="sidebar-profile-meta">Student</small></span>
+      </div>
       <div class="sidebar-footer"><span class="status-dot"></span> Campus demo <span class="footer-muted">· v1.0</span></div>
     </aside>
     <main class="main-area">
@@ -34,6 +42,6 @@
   </div>
   <div class="toast-region" id="toasts" aria-live="polite" aria-atomic="true"></div>
   <dialog id="dialog" class="dialog"></dialog>
-  <script type="module" src="/app.js"></script>
+  <script type="module" src="/app.js?v=lablink-ui-3"></script>
 </body>
 </html>

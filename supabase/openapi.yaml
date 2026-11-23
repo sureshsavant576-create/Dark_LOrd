@@ -19,7 +19,7 @@ paths:
       parameters:
         - name: select
           in: query
-          schema: { type: string, default: "id,name,category,location,description,specs,total_units,training_required,status,tags,operational_status,restrictions,max_hours,equivalent_group,technical_profile,department,department_code" }
+          schema: { type: string, default: "id,name,category,location,description,specs,total_units,training_required,status,tags,operational_status,condition_status,restrictions,max_hours,equivalent_group,technical_profile,department,department_code" }
         - name: department_code
           in: query
           description: Filter using PostgREST syntax, for example eq.ECE.

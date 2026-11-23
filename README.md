@@ -47,9 +47,11 @@ Academic institutions invest heavily in specialized laboratories (e.g., ECE osci
 - **Intelligent Slot Recommendation & Alternative Suggestions**: When equipment is congested or fully booked, the system automatically suggests equivalent operational alternatives with available capacity.
 - **Safety Training Verification Gate**: Blocks booking submissions and approvals if the student has not completed required safety certifications.
 - **Faculty Review & Arbitration Dashboard**: Prioritized queue for pending requests with complete component score breakdowns, student history, and one-click approvals/rejections with mandatory notes.
-- **Lab Technician & Maintenance Controls**: Live toggling of operational status (`operational`, `maintenance`, `out_of_service`), capacity adjustments, and safety training sign-offs.
+- **Equipment Condition & Maintenance**: Track Available, In Use, Under Maintenance and Under Inspection states; collect fault and student damage reports with optional photographs; keep maintenance history, notify technicians and faculty, and require technician or administrator clearance before returning equipment to discovery and scheduling.
 - **Resource Insights & Campus Analytics**: Visual utilization metrics, demand by home department, total hours booked vs. actual usage, and recent audit activity.
 - **Real-Time Notification Triggers**: SQLite-backed notification triggers that alert students and staff on request submissions, approvals, rejections, status changes, and training updates.
+- **Verified Booking Usage**: Confirmed reservations are matched to check-in/check-out records. Missing check-ins become neutral review candidates after a configurable grace period; students are notified and staff must verify a no-show before it enters allocation history.
+- **Right-Sized Sessions**: Students provide estimated equipment-use hours. Task and equipment limits plus current slot capacity inform duration suggestions. Any change to an approved reservation duration requires staff approval.
 - **Interactive Persona Switcher (Zero-Login Prototype)**: Instantly switch between Student (Aarav, Priya, Kabir), Faculty Reviewer (Dr. Meera Rao, Dr. Rohan Das), Lab Technician, and Campus Admin directly from the UI header.
 
 ---
@@ -119,6 +121,24 @@ Academic institutions invest heavily in specialized laboratories (e.g., ECE osci
 
 The embedded database resides at `data/lablink.sqlite` and includes relational integrity rules, check constraints, indexes, and triggers.
 
+### Supabase hosted database and public API
+
+The Supabase migration in [`supabase/migrations/20261123000000_lablink_schema.sql`](supabase/migrations/20261123000000_lablink_schema.sql) creates the PostgreSQL tables, indexes, notification triggers, row-level security, and a read-only `equipment_catalog` view. [`supabase/seed.sql`](supabase/seed.sql) adds the sample departments, equipment, and demo personas. The public API contract is in [`supabase/openapi.yaml`](supabase/openapi.yaml).
+
+After creating a Supabase project, install the Supabase CLI, run `npx supabase login`, and link it with `npx supabase link --project-ref YOUR_PROJECT_REF`. Preview the remote change with `npx supabase db push --dry-run --remote`, then publish with `npm run db:push`. This applies migrations; the development-only sample data is opt-in with `npm run db:push -- --include-seed`. Supabase exposes the catalog at `https://YOUR_PROJECT_REF.supabase.co/rest/v1/equipment_catalog` and departments at `/rest/v1/departments`. Requests use the publishable key in both `apikey` and `Authorization: Bearer` headers. The only public policies are read-only catalog policies. User profiles, bookings, projects, training, audit, and notifications remain inaccessible to public clients until real Supabase Auth policies are added.
+
+The ready-to-publish API definition is [`supabase/openapi.yaml`](supabase/openapi.yaml). Example catalog request:
+
+```sh
+curl "$SUPABASE_URL/rest/v1/equipment_catalog?select=*&limit=100" \
+  -H "apikey: $SUPABASE_PUBLISHABLE_KEY" \
+  -H "Authorization: Bearer $SUPABASE_PUBLISHABLE_KEY"
+```
+
+**Current integration boundary:** the LabLink UI and Node REST routes use the local SQLite adapter in `server/db.js`. The Supabase schema and read-only public catalog API are prepared separately; booking and role-based routes do not use hosted PostgreSQL. Keep any Supabase service-role key on the server and out of browser code.
+
+The app can be containerized for a **disposable Cloud Run demonstration**. The persona selector issues an HTTP-only, server-signed demo session, and API handlers bind caller-supplied actor IDs to that selected persona. Anyone who can reach the public demo can still select any seeded persona, so this is not authentication or institutional authorization. Do not put real student or institutional data in a public demo. SQLite is stored on the container's writable filesystem; Cloud Run's filesystem is in-memory and data is lost when an instance stops. Use a persistent PostgreSQL adapter and real campus identity before relying on it for live operations.
+
 ```mermaid
 erDiagram
     DEPARTMENTS ||--o{ USERS : employs_or_enrolls
@@ -140,7 +160,7 @@ erDiagram
 |---|---|---|---|
 | `departments` | `id` | `name` (UNIQUE), `code` | Campus departments (ECE, CSE, Mech, Physics, Design). |
 | `users` | `id` | `name`, `department_id` (FK), `role` (`student`, `faculty`, `technician`, `hod`, `admin`) | Campus directory and demo personas. |
-| `equipment` | `id` | `name`, `category`, `department_id` (FK), `location`, `total_units` (>0), `training_required` (0/1), `operational_status`, `max_hours`, `equivalent_group`, `tags` | Equipment specifications, status, and constraints. |
+| `equipment` | `id` | `name`, `category`, `department_id` (FK), `location`, `total_units` (>0), `training_required` (0/1), `operational_status`, `condition_status`, `max_hours`, `equivalent_group`, `tags` | Equipment specifications, health, and constraints. |
 | `projects` | `id` | `user_id` (FK), `name`, `description`, `deadline`, `requirements` (JSON) | Student projects with deadlines and technical scopes. |
 | `bookings` | `id` | `user_id` (FK), `project_id` (FK), `equipment_id` (FK), `start_at`, `end_at` (`end_at > start_at`), `status` (`pending`, `approved`, `rejected`, `cancelled`, `rescheduled`), `priority_score`, `fairness_note`, `reviewed_by` (FK) | Slot reservations and approval state. |
 | `training` | `(user_id, equipment_id)` | Composite PK, `completed_at` | Safety training sign-offs. |
@@ -148,6 +168,7 @@ erDiagram
 | `audit_log` | `id` | `actor_id` (FK), `action`, `entity_type`, `entity_id`, `details` (JSON), `created_at` | Immutable compliance and activity log. |
 | `usage_events` | `id` | `equipment_id`, `user_id`, `booking_id`, `scheduled_start`, `actual_start`, `actual_end`, `source` (`verified`/`simulated`) | Physical check-in and check-out tracking. |
 | `maintenance_logs` | `id` | `equipment_id`, `actor_id`, `note`, `downtime_start`, `downtime_end` | Downtime and service history. |
+| `equipment_condition_reports` | `id` | `equipment_id`, `reporter_id`, `report_type`, `description`, optional `photo_data`, `status`, `cleared_by`, `cleared_at` | Fault and damage reports, including authorized clearance. |
 
 ---
 
@@ -220,6 +241,9 @@ Where components $C_k \in [0, 1]$ and baseline weights $w_k$ are:
 
 ### Policy Customization
 All weights are configurable via the `LABLINK_FAIRNESS_POLICY` environment variable without requiring code modifications.
+The same JSON policy can set `no_show_grace_hours` (default `2`) and `repeat_no_show_threshold` (default `3`). No-show history only affects allocation after the threshold is met and a technician or administrator verifies each event. A missing or late check-in alone is unverified, triggers a neutral student notice, and never affects allocation. The system also uses only verified completed sessions for recent-usage factors; legacy and simulated usage are excluded.
+
+Booking requests include the student's estimated usage duration. The recommendation endpoint compares task language with equipment information and its maximum session length, then checks occupied units in the requested slot. It is advisory; the student's requested duration goes through ordinary faculty booking review. Later duration changes are held as proposals until faculty, HOD, technician, or admin approval.
 
 ---
 
@@ -227,7 +251,7 @@ All weights are configurable via the `LABLINK_FAIRNESS_POLICY` environment varia
 
 ### Strict Eligibility Constraints (Hard Gates)
 A request is rejected immediately (`409 Conflict` or `400 Bad Request`) if any hard constraint fails:
-1. **Equipment Health**: `operational_status === 'operational'`.
+1. **Equipment Health**: Only cleared equipment (`condition_status` of `available` or `in_use` and operational status) can receive new bookings. Fault or damage reports move it to `under_inspection` and block allocation until a technician or administrator records clearance.
 2. **Safety Compliance**: If `training_required = 1`, an entry must exist in `training` for `(user_id, equipment_id)`.
 3. **Slot Duration**: Must be between 1 and 8 hours (or the equipment-specific `max_hours`).
 4. **Temporal Validity**: Slot must be strictly in the future, with `end_at > start_at`.
@@ -251,13 +275,15 @@ If equipment is congested, the system automatically queries for operational item
 
 ## 11. Security Implementation
 
-- **No Authentication Barriers (Prototype Policy)**: All features are immediately accessible without login walls, using a persona selector for seamless testing.
-- **Role-Based Access Enforcement (RBAC)**: Backend endpoints strictly enforce actor role capabilities (`student`, `faculty`, `technician`, `hod`, `admin`). For example, non-technicians cannot patch equipment states; students cannot approve bookings.
-- **SQL Injection Prevention**: 100% of database queries use parameterized SQL prepared statements (`?` parameters) via native `DatabaseSync.prepare()`. No string concatenation in SQL.
-- **Path Traversal Protection**: Static file serving normalizes requested paths, decodes URI components, strips leading `..` traversal sequences, and confirms target paths start within the `/public` root directory before reading.
-- **Payload & Denial-of-Service Defense**: Incoming HTTP request streams are capped at 1 MB (`1e6` bytes); payloads exceeding this are rejected with `413 Request Entity Too Large`.
-- **Database Concurrency & Integrity**: All multi-step booking submissions, status transitions, and reviews run within `BEGIN IMMEDIATE` SQLite transactions to prevent race conditions during concurrent bookings.
-- **Auditing**: All state transitions (`request_created`, `equipment_updated`, `training_verified`, `booking_approved`, `booking_rejected`, `maintenance_reported`) are permanently written to `audit_log`.
+- **Direct prototype access**: The app opens at the dashboard with no login or registration form. A server-signed, HTTP-only, SameSite demo cookie binds each API request to the selected seeded persona. This prevents an API caller from impersonating a different persona by editing `userId`, `actorId`, or `reviewerId` in a request. The demo switch endpoint is intentionally open, so this mechanism is not genuine authentication or a production authorization boundary.
+- **Server-side role checks**: Booking review, equipment maintenance, training verification, project ownership, and other role-sensitive operations check the selected persona's database role on the server.
+- **Request validation**: JSON bodies are limited to 256 KiB. Optional condition photos accept only PNG, JPEG, or WebP data whose bytes match the declared format, up to 150 KiB. Mutating API requests must use `application/json`.
+- **Rate limiting**: The server applies per-client limits to API traffic and tighter limits to AI-backed routes and demo-session changes.
+- **Browser protections**: Responses include a Content Security Policy, `nosniff`, frame protection, a referrer policy, and restricted browser permissions. HTTPS deployments also set HSTS and the session cookie's `Secure` flag.
+- **SQL injection prevention**: Database values are passed through SQLite prepared-statement parameters. Dynamic query structure is selected from server-owned allowlisted clauses.
+- **Path traversal protection**: Static file serving resolves requested paths and checks that the resulting file remains inside the `/public` root. Missing files return `404`.
+- **Database concurrency and integrity**: Booking submissions, approvals, waitlist offers, QR movements, and equipment-condition changes use SQLite transactions and database constraints to prevent duplicate or conflicting state.
+- **Auditing**: Booking, equipment, training, QR movement, condition, and waitlist transitions write actor and event details to `audit_log` or the corresponding history table.
 
 ---
 
@@ -271,6 +297,8 @@ If equipment is congested, the system automatically queries for operational item
 ### Current Limitations
 - **Solver Scope**: Scheduling currently evaluates slots per equipment item. It does not run an NP-hard global multi-resource constraint satisfaction solver (e.g. Google OR-Tools).
 - **Embedded Storage**: SQLite is optimized for embedded single-node deployments. High-availability multi-instance setups would require PostgreSQL with connection pooling.
+- **Cloud Run demo storage**: The container stores SQLite under `/tmp`. Cloud Run's writable filesystem is in-memory and does not survive instance shutdown, so bookings and maintenance changes are disposable in this demonstration.
+- **Public demo access**: A visitor can switch among the seeded student and staff personas. Rate limits and server-side role checks reduce accidental misuse, but real identity, institutional authorization, and durable storage are not configured.
 - **Simulated Hardware Telemetry**: Lab check-ins and check-outs are managed via software verification rather than physical RFID / badge reader hardware webhooks.
 
 ---
@@ -288,9 +316,13 @@ cp .env.example .env
 |---|---|---|---|
 | `PORT` | Integer | `3000` | Port for the HTTP application server. |
 | `LABLINK_DB_PATH` | String | `data/lablink.sqlite` | Custom file path for SQLite database instance. |
-| `OPENAI_API_KEY` | String | *None* | Optional API key for LLM-assisted project requirement extraction. |
-| `OPENAI_BASE_URL` | String | `https://api.openai.com/v1/chat/completions` | Base URL for LLM provider (supports Ollama, Groq, OpenRouter, etc.). |
-| `OPENAI_MODEL` | String | `gpt-4o-mini` | Model identifier for OpenAI-compatible endpoint. |
+| `LABLINK_SESSION_SECRET` | String | Random per process | Optional HMAC signing key; set a stable random value through a hosting secret manager for multi-instance sessions. |
+| `GEMINI_API_KEY` | String | *None* | Optional Gemini key for GenAI requirement and task extraction. |
+| `GEMINI_BASE_URL` | String | Gemini OpenAI-compatible endpoint | Optional Gemini-compatible endpoint override. |
+| `GEMINI_MODEL` | String | `gemini-2.5-flash` | Gemini model identifier. |
+| `OPENAI_API_KEY` | String | *None* | Optional OpenAI-compatible provider fallback. |
+| `OPENAI_BASE_URL` | String | `https://api.openai.com/v1/chat/completions` | Optional OpenAI-compatible endpoint override. |
+| `OPENAI_MODEL` | String | `gpt-4o-mini` | Model identifier for the OpenAI-compatible fallback. |
 | `LABLINK_FAIRNESS_POLICY` | JSON | *Built-in* | JSON override for fairness policy weights and limits. |
 
 ---
@@ -336,28 +368,48 @@ Open your browser to:
 
 ---
 
-## 16. Testing Instructions
+## 16. Container and Cloud Run Deployment
+
+The repository includes a small Dockerfile that runs the native Node.js server without installing third-party runtime packages. Build and run it locally:
+
+```sh
+docker build -t lablink:local .
+docker run --rm -p 8080:8080 lablink:local
+```
+
+For a disposable public demo, create a stable random `LABLINK_SESSION_SECRET` in Google Secret Manager and grant the Cloud Run runtime service account access to it. Then deploy from the repository root:
+
+```sh
+gcloud run deploy lablink \
+  --source . \
+  --region REGION \
+  --port 8080 \
+  --allow-unauthenticated \
+  --max-instances 1 \
+  --set-env-vars NODE_ENV=production,LABLINK_DB_PATH=/tmp/lablink.sqlite \
+  --set-secrets LABLINK_SESSION_SECRET=lablink-session-secret:1
+```
+
+Replace `REGION` with a Cloud Run region in the selected Google Cloud project. Public access is required for this no-login prototype, and visitors can select any seeded persona; the demo session does not authenticate a campus member. SQLite is ephemeral on Cloud Run, so bookings and maintenance updates can disappear when the instance stops. This deployment is for feature demonstrations only. It requires an authenticated Google Cloud project and Cloud Run/Cloud Build permissions. After deployment, verify the returned URL, `/api/health`, the dashboard, and the main booking, approval, waitlist, QR, and planner workflows. Do not publish a URL until those checks pass.
+
+## 17. Testing Instructions
 
 ### 1. Run Automated Test Suite
-LabLink includes an automated end-to-end integration test suite (`tests/app.test.js`) executed with Node.js's native test runner:
+LabLink uses Node.js's native test runner for the REST workflow integration test and focused security and upload validation tests:
 ```sh
 npm test
 # Or directly with node:
 node --test
 ```
-This validates:
-- API bootstrap, equipment queries, and project creation.
-- Capacity constraints and safety training prerequisite enforcement.
-- Deterministic fairness scoring and priority ranking.
-- Approval arbitration, audit logging, and physical check-in state transitions.
+The suite checks concurrent duplicate requests, capacity and training gates, fairness ranking, user/role impersonation, project dependency scheduling, waitlist handoff, QR collection and return, upload validation, and maintenance state changes.
 
-### 2. Automated Health & API Verification
+### 2. Automated Health Verification
 Run this one-line command to verify server responsiveness:
 ```sh
 node -e "const http=require('http'); http.get('http://127.0.0.1:3000/api/health', r => { console.log('HTTP Status:', r.statusCode); process.exit(r.statusCode === 200 ? 0 : 1); });"
 ```
 
-### 2. Verify Key REST Endpoints
+### 3. Verify Key REST Endpoints
 ```sh
 # Health Check
 curl http://localhost:3000/api/health
@@ -368,18 +420,27 @@ curl http://localhost:3000/api/bootstrap
 # Equipment Catalog
 curl http://localhost:3000/api/equipment
 
+# Select an explicitly seeded demo profile. This is not a login or real account.
+curl -c lablink-demo-cookies.txt -X POST http://localhost:3000/api/demo/session \
+  -H "Content-Type: application/json" \
+  -d '{"userId":1}'
+
 # Natural Language Assistant Search
 curl -X POST http://localhost:3000/api/assistant/search \
+  -b lablink-demo-cookies.txt \
   -H "Content-Type: application/json" \
   -d '{"query":"thermal camera imaging for solar panel heat study"}'
 
 # Test Booking Recommendation & Fairness Score
 curl -X POST http://localhost:3000/api/bookings/recommend \
+  -b lablink-demo-cookies.txt \
   -H "Content-Type: application/json" \
   -d '{"userId":1,"projectId":1,"equipmentId":1,"startAt":"2026-11-25T10:00","endAt":"2026-11-25T14:00"}'
 ```
 
-### 3. Scenario Walkthrough (End-to-End Functional Test)
+Remove the temporary `lablink-demo-cookies.txt` file after local verification.
+
+### 4. Scenario Walkthrough (End-to-End Functional Test)
 1. **Search**: Switch to student persona *Priya Nair*. Enter *"robotics edge vision"* in the Discover search bar. Notice that *Jetson Nano Developer Kit* ranks at the top with matched capabilities.
 2. **Safety Gate Verification**: Attempt to book an *Oscilloscope* without completed training. Verify that the system flags the missing safety certification.
 3. **Submit Request**: Request an available *ESP32 Kit* for an active project. Verify the request appears under *My Requests* with status `pending`.

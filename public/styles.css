@@ -15,12 +15,21 @@ button:disabled{cursor:not-allowed;opacity:.55}
 @media(max-width:700px){.table-wrap{margin-inline:-4px}.data-table{min-width:640px}.dialog{max-height:90dvh;overflow:auto}.topbar-right{min-width:0}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
 /* GenAI & Intelligent Allocation Engine UI Styles */
-.ai-hero-card{background:linear-gradient(135deg,#ffffff 0%,#f6faf7 100%);border:1px solid #cce2d4;border-radius:12px;padding:22px;margin:18px 0 22px;box-shadow:0 8px 30px rgba(33,108,77,.06);position:relative;overflow:hidden}
-.ai-hero-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#18593e,#45a777,#74c99c)}
+.lablink-assistant{margin:18px 0 22px;border-color:#cce2d4;box-shadow:0 8px 30px rgba(33,108,77,.05)}
+.lablink-assistant h3{font-size:18px}
+.lablink-assistant .panel-subtitle{font-size:12px;max-width:760px}
+.lablink-assistant .ai-input-wrap{margin:15px 0 0}
+.lablink-assistant .ai-input-wrap input{min-width:180px}
+.assistant-policy-link{margin-top:12px}
+.lablink-assistant .ai-matrix-card{margin:18px 0 0}
+@media(max-width:700px){.lablink-assistant .ai-input-wrap{flex-wrap:wrap}.lablink-assistant .ai-input-wrap input{flex-basis:100%;padding:8px 2px}.lablink-assistant .ai-input-wrap button{flex:1}}
+.sidebar-profile{display:flex;align-items:center;gap:10px;border-top:1px solid var(--line);padding:14px 5px 4px;min-width:0}
+.sidebar-profile-avatar{width:32px;height:32px;flex:0 0 32px;border-radius:50%;display:grid;place-items:center;background:#e1eee5;color:var(--green-dark);font-size:10px;font-weight:700}
+.sidebar-profile-details{display:grid;gap:2px;min-width:0}
+.sidebar-profile-details strong{font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#343c36}
+.sidebar-profile-details small{font-size:9px;color:#858c86;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .ai-hero-badge{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:700;color:#18593e;background:#e4f2e9;padding:4px 10px;border-radius:20px;margin-bottom:10px;letter-spacing:.5px}
 .ai-sparkle{color:#2c8b61;font-size:13px}
-.ai-hero-card h2{font:700 20px Manrope,sans-serif;color:#172a1f;margin:0 0 6px;letter-spacing:-.4px}
-.ai-hero-card p{font-size:12px;color:#58635b;margin:0 0 15px;line-height:1.55;max-width:760px}
 .ai-input-wrap{display:flex;gap:10px;background:#fff;border:1.5px solid #bddbc8;border-radius:8px;padding:6px 8px 6px 14px;box-shadow:0 2px 8px rgba(0,0,0,.03);align-items:center}
 .ai-input-wrap:focus-within{border-color:#216c4d;box-shadow:0 0 0 3px rgba(33,108,77,.15)}
 .ai-input-wrap input{border:0;outline:0;flex:1;font-size:13px;color:#1c211e;background:transparent}
@@ -29,9 +38,6 @@ button:disabled{cursor:not-allowed;opacity:.55}
 .chips-label{font-size:11px;font-weight:600;color:#717c73}
 .prompt-chip{background:#fff;border:1px solid #d4ded7;border-radius:20px;padding:5px 11px;font-size:11px;font-weight:600;color:#33443a;transition:all .15s ease}
 .prompt-chip:hover{background:#eaf3ed;border-color:#45a777;color:#18593e;transform:translateY(-1px)}
-.fairness-banner{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;background:#ffffff;border:1px solid #e1e7e3;border-left:4px solid #216c4d;border-radius:8px;padding:12px 18px;margin:16px 0 20px;font-size:12px}
-.fairness-banner strong{color:#1c2e22}
-.fairness-banner span{color:#556258}
 .ai-matrix-card{background:#ffffff;border:1px solid #cbe0d3;border-radius:10px;padding:18px;margin:16px 0 24px;box-shadow:0 4px 16px rgba(33,108,77,.05)}
 .ai-matrix-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
 .ai-mode-pill{font-size:11px;font-weight:700;color:#175739;background:#def0e4;padding:4px 10px;border-radius:20px}
@@ -43,3 +49,8 @@ button:disabled{cursor:not-allowed;opacity:.55}
 .ai-recommend-box p{font-size:12px;color:#3b5a48;margin:4px 0 0;line-height:1.5}
 .dept-pill{font-size:10px;font-weight:700;color:#384d40;background:#eef2ef;padding:3px 7px;border-radius:4px;display:inline-block;margin-bottom:4px}
 
+
+.qr-preview{display:grid;place-items:center;padding:18px;background:#f5f7f5;border:1px solid var(--line);border-radius:8px}.qr-preview svg{width:min(260px,70vw);height:auto;background:#fff}.qr-code-text{text-align:center;font:700 13px ui-monospace,monospace;letter-spacing:1px}.qr-video{width:100%;max-height:320px;margin-top:14px;background:#18221b;border-radius:8px;object-fit:cover}.qr-video:not(.hidden){display:block}.tracking-nav{margin-top:4px}
+.card-bottom .inline-actions{flex-wrap:wrap;justify-content:flex-end}
+
+.safety-warning{display:inline-block;padding:6px 9px;border:1px solid #f5d8d3;border-radius:6px;background:#fff1ee;color:#a9473c;font-size:12px;font-weight:600;line-height:1.4}
