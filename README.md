@@ -1,6 +1,6 @@
 # LabLink
 
-LabLink is a no-login campus prototype for discovering shared laboratory equipment, attaching requests to student projects, and reviewing requests with an explainable fairness score.
+LabLink connects student project needs to technically compatible equipment across departments, then helps staff resolve competing requests through transparent fairness recommendations. It also surfaces resource utilization to support institutional sharing decisions.
 
 ## Run locally
 
